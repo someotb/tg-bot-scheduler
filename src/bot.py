@@ -1,23 +1,24 @@
 import json
 import os
+from pyexpat.errors import messages
 
 import telebot
+from telebot import types
 
+import config
 from weather import format_weather, get_today_weather
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TOKEN_PATH = os.path.join(BASE_DIR, "../token.txt")
 DATA_FILE = os.path.join(BASE_DIR, "../data/users.json")
 
-try:
-    with open(TOKEN_PATH, "r", encoding="utf-8") as f:
-        TOKEN = f.readline().strip()
-    if not TOKEN:
-        raise ValueError("TOKEN EMPTY")
-except FileNotFoundError:
-    raise RuntimeError(f"File with TOKEN not FOUND: {TOKEN_PATH}")
-except ValueError as e:
-    raise ValueError(f"Errors in TOKEN: {e}")
+
+def about_me():
+    text = """
+    I am a bot for experiments, my creator will use me for
+his own purposes, he hopes that I will become a good helper
+for him in everyday life, do you think I will justify his trustworthiness?
+    """
+    return text
 
 
 def get_user_step(uid):
@@ -31,7 +32,7 @@ def get_user_step(uid):
         return 0
 
 
-def listener(message):
+def message_listener(message):
     for m in message:
         if m.content_type == "text":
             print(
@@ -70,17 +71,9 @@ def save_users():
         )
 
 
-bot = telebot.TeleBot(TOKEN)
-bot.set_update_listener(listener)
-
+bot = telebot.TeleBot(config.BOT_TOKEN)
+bot.set_update_listener(message_listener)
 knownUsers, userStep = load_users()
-
-commands = {
-    "start": "Get used to the bot",
-    "help": "Gives you information about the available commands",
-    "wether": "Gives you weather for the day",
-}
-
 print("------------------Bot Started------------------")
 
 
@@ -109,18 +102,27 @@ def command_start(m):
 @bot.message_handler(commands=["help"])
 def command_help(m):
     cid = m.chat.id
-    help_text = "The following command are available: \n"
-    for command in commands:
-        help_text += "/" + command + ": "
-        help_text += commands[command] + "\n"
-    bot.send_message(cid, help_text)
+    kb = types.InlineKeyboardMarkup()
+    kb.add(
+        types.InlineKeyboardButton("🌤 Weather", callback_data="weather"),
+        types.InlineKeyboardButton("⁉️ About me", callback_data="about"),
+    )
+    bot.send_message(cid, "That's what I can do for you.", reply_markup=kb)
 
 
-@bot.message_handler(commands=["wether"])
-def command_wether(m):
-    cid = m.chat.id
-    w = get_today_weather(55.0344, 82.9434)
-    bot.send_message(cid, format_weather(w))
+@bot.callback_query_handler(func=lambda c: c.data in ("weather", "about"))
+def callbacks(call):
+    print(
+        f"{call.from_user.first_name} {call.from_user.last_name} "
+        f"[{call.from_user.id}]: INLINE -> {call.data}"
+    )
+    cid = call.message.chat.id
+    bot.answer_callback_query(call.id, "Fucking up meteorologists")
+    if call.data == "weather":
+        w = get_today_weather(55.0344, 82.9434)
+        bot.send_message(cid, format_weather(w), parse_mode="HTML")
+    elif call.data == "about":
+        bot.send_message(cid, about_me())
 
 
 @bot.message_handler(content_types=["text"])
@@ -132,4 +134,4 @@ def command_default(m):
     )
 
 
-bot.infinity_polling()
+bot.infinity_polling(skip_pending=True, timeout=20)
