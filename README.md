@@ -9,7 +9,7 @@ Create directory `data` and file inside `users.json` which will store all users
 mkdir data; cd data; touch users.json
 ```
 
-Also you should create `token.txt` and put YOUR Telegram TOKEN inside
+Also you should create `config.py` and put YOUR Telegram TOKEN inside through the `BOT_TOKEN` variable
 
 ## Running
 > I start my programm this way, but first activate your `venv` by ```source venv/bin/activate``` and enter the directory `src`
