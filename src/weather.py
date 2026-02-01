@@ -28,7 +28,7 @@ def get_today_weather(lat: float, lon: float) -> dict:
         "timezone": "auto",
     }
 
-    r = requests.get(url, params=params, timeout=10)
+    r = requests.get(url, params=params, timeout=5)
     r.raise_for_status()
     daily = r.json()["daily"]
     current = r.json()["current_weather"]
@@ -49,11 +49,18 @@ def format_weather(w: dict) -> str:
     desc = WEATHER_CODES.get(w["code"], "Неизвестно")
     now_time = datetime.now().strftime("%H:%M:%S, %d %B")
 
+    # Декоративные линии
+    line = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
     return (
-        f"🌡 Сейчас: {w['current_temp']}°C\n\n"
-        f"🕒 Данные на {w['current_time']}\n\n"
-        f"🗓 Проверено в {now_time}\n\n"
-        f"↕️ Сегодня от {w['t_min']}°C до {w['t_max']}°C\n\n"
-        f"💨 Скорость ветра: {w['current_wind']} m/s\n\n"
-        f"🌤 {desc}"
+        f"<b><i>☀️                ПОГОДА НА СЕГОДНЯ                ☀️</i></b>\n"
+        f"<b><i>{line}</i></b>\n\n"
+        f"<b>🌡 Температура сейчас:</b> {w['current_temp']}°C\n"
+        f"<b>↕️ Сегодня:</b> от {w['t_min']}°C до {w['t_max']}°C\n"
+        f"<b>💨 Ветер:</b> {w['current_wind']} m/s\n"
+        f"<b>🌤 Состояние:</b> {desc}\n\n"
+        f"<i>🕒 Данные на:</i> {w['current_time']}\n"
+        f"<i>🗓 Проверено в:</i> {now_time}\n\n"
+        f"<b><i>{line}</i></b>\n"
+        f"\u2800"
     )
