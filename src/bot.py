@@ -13,11 +13,7 @@ DATA_FILE = os.path.join(BASE_DIR, "../data/users.json")
 
 
 def about_me():
-    text = """
-    I am a bot for experiments, my creator will use me for
-his own purposes, he hopes that I will become a good helper
-for him in everyday life, do you think I will justify his trustworthiness?
-    """
+    text = "I am a bot for experiments, my creator will use me for his own purposes, he hopes that I will become a good helper for him in everyday life, do you think I will justify his trustworthiness?"
     return text
 
 
