@@ -1,15 +1,16 @@
 import json
 import os
-from pyexpat.errors import messages
+from datetime import datetime
 
 import telebot
 from telebot import types
 
 import config
+from schedule import format_schedule, get_schedule_html, parse_schedule
 from weather import format_weather, get_today_weather
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, "../data/users.json")
+USER_FILE = os.path.join(BASE_DIR, "../data/users.json")
 
 
 def about_me():
@@ -41,10 +42,10 @@ def message_listener(message):
 
 
 def load_users():
-    if not os.path.exists(DATA_FILE):
+    if not os.path.exists(USER_FILE):
         return [], {}
 
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
+    with open(USER_FILE, "r", encoding="utf-8") as f:
         try:
             data = json.load(f)
         except json.JSONDecodeError:
@@ -56,7 +57,7 @@ def load_users():
 
 
 def save_users():
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
+    with open(USER_FILE, "w", encoding="utf-8") as f:
         json.dump(
             {
                 "known_users": knownUsers,
@@ -102,23 +103,32 @@ def command_help(m):
     kb.add(
         types.InlineKeyboardButton("🌤 Weather", callback_data="weather"),
         types.InlineKeyboardButton("⁉️ About me", callback_data="about"),
+        types.InlineKeyboardButton("📆 Schedule", callback_data="schedule"),
     )
     bot.send_message(cid, "That's what I can do for you.", reply_markup=kb)
 
 
-@bot.callback_query_handler(func=lambda c: c.data in ("weather", "about"))
+@bot.callback_query_handler(func=lambda c: c.data in ("weather", "about", "schedule"))
 def callbacks(call):
     print(
-        f"{call.from_user.first_name} {call.from_user.last_name} "
+        f"{call.from_user.first_name} {call.from_user.last_name or ''}"
         f"[{call.from_user.id}]: INLINE -> {call.data}"
     )
     cid = call.message.chat.id
-    bot.answer_callback_query(call.id, "Fucking up meteorologists")
+    bot.answer_callback_query(call.id)
     if call.data == "weather":
         w = get_today_weather(55.0344, 82.9434)
         bot.send_message(cid, format_weather(w), parse_mode="HTML")
     elif call.data == "about":
         bot.send_message(cid, about_me())
+    elif call.data == "schedule":
+        html = get_schedule_html()
+        if not html:
+            bot.send_message(cid, "❌ Не удалось получить расписание")
+            return
+        schedule = parse_schedule(html)
+        text = format_schedule(schedule)
+        bot.send_message(cid, text, parse_mode="HTML")
 
 
 @bot.message_handler(content_types=["text"])
