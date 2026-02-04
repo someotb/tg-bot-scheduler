@@ -1,143 +1,186 @@
 import json
-import os
+import os, re
 from datetime import datetime
-
-import telebot
-from telebot import types
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.filters import Command
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.client.bot import DefaultBotProperties
 
 import config
-from schedule import format_schedule, get_schedule_html, parse_schedule
+from schedule import format_schedule, get_schedule_html, parse_schedule, get_group_id
 from weather import format_weather, get_today_weather
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 USER_FILE = os.path.join(BASE_DIR, "../data/users.json")
 
+knownUsers = []
+userStep = {}
+group_id = {}
+
 
 def about_me():
-    text = "I am a bot for experiments, my creator will use me for his own purposes, he hopes that I will become a good helper for him in everyday life, do you think I will justify his trustworthiness?"
-    return text
-
-
-def get_user_step(uid):
-    if uid in userStep:
-        return userStep[uid]
-    else:
-        knownUsers.append(uid)
-        userStep[uid] = 0
-        save_users()
-        print('Detected new user, who hasn`t used "/start" ')
-        return 0
-
-
-def message_listener(message):
-    for m in message:
-        if m.content_type == "text":
-            print(
-                str(m.chat.first_name + " " + m.chat.last_name)
-                + " ["
-                + str(m.chat.id)
-                + "]: "
-                + m.text
-            )
+    return (
+        "I am a bot for experiments, my creator will use me for his own purposes, "
+        "he hopes that I will become a good helper for him in everyday life, "
+        "do you think I will justify his trustworthiness?"
+    )
 
 
 def load_users():
     if not os.path.exists(USER_FILE):
-        return [], {}
-
+        return [], {}, {}
     with open(USER_FILE, "r", encoding="utf-8") as f:
         try:
             data = json.load(f)
         except json.JSONDecodeError:
-            return [], {}
-
-    return data.get("known_users", []), {
-        int(k): v for k, v in data.get("user_step", {}).items()
-    }
+            return [], {}, {}
+    return (
+        data.get("known_users", []),
+        {int(k): v for k, v in data.get("user_step", {}).items()},
+        data.get("group_id", {}),
+    )
 
 
 def save_users():
     with open(USER_FILE, "w", encoding="utf-8") as f:
         json.dump(
-            {
-                "known_users": knownUsers,
-                "user_step": userStep,
-            },
+            {"known_users": knownUsers, "user_step": userStep, "group_id": group_id},
             f,
             indent=2,
         )
 
 
-bot = telebot.TeleBot(config.BOT_TOKEN)
-bot.set_update_listener(message_listener)
-knownUsers, userStep = load_users()
+def groups_keyboard(groups: list):
+    groups_sorted = sorted(groups, key=lambda g: g.get("text", ""))
+    kb = InlineKeyboardBuilder()
+    row_len = 2 if len(groups) < 12 else 3
+    row = []
+    for i, group in enumerate(groups_sorted, 1):
+        gid = str(group.get("id", ""))
+        name = str(group.get("text", ""))
+        if not gid or not name:
+            continue
+        row.append(InlineKeyboardButton(text=name, callback_data=f"group:{gid}"))
+        if i % row_len == 0:
+            kb.row(*row)
+            row = []
+    if row:
+        kb.row(*row)
+    kb.adjust(2)
+    return kb.as_markup()
+
+
+bot = Bot(
+    token=config.BOT_TOKEN,
+    default=DefaultBotProperties(parse_mode="HTML")
+)
+dp = Dispatcher(storage=MemoryStorage())
+
+knownUsers, userStep, group_id = load_users()
 print("------------------Bot Started------------------")
 
 
-@bot.message_handler(commands=["start"])
-def command_start(m):
+@dp.message(Command(commands=["start"]))
+async def command_start(m: types.Message):
     cid = m.chat.id
-    name = m.chat.first_name + " " + m.chat.last_name
+    name = m.chat.first_name + " " + (m.chat.last_name or "")
     if cid not in knownUsers:
         knownUsers.append(cid)
         userStep[cid] = 0
         save_users()
-        bot.send_message(
-            cid, "I'm glad to see you. stranger, i must scan you firstly..."
+        await m.answer("I'm glad to see you. stranger, i must scan you firstly...")
+        await m.answer(
+            f"The scan is completed!\nI am your humble servant, you can call me nado.\nNice to meet you {name}"
         )
-        bot.send_message(
-            cid,
-            "The scan is completed!\nI am your humble servant, you can call me nado.\nNice to meet you "
-            + name,
-        )
-        command_help(m)
+        await command_help(m)
     else:
-        bot.send_message(cid, f"Hi, {name}!")
-        command_help(m)
+        await m.answer(f"Hi, {name}!")
+        await command_help(m)
 
 
-@bot.message_handler(commands=["help"])
-def command_help(m):
-    cid = m.chat.id
-    kb = types.InlineKeyboardMarkup()
-    kb.add(
-        types.InlineKeyboardButton("🌤 Weather", callback_data="weather"),
-        types.InlineKeyboardButton("⁉️ About me", callback_data="about"),
-        types.InlineKeyboardButton("📆 Schedule", callback_data="schedule"),
+@dp.message(Command(commands=["help"]))
+async def command_help(m: types.Message):
+    kb = InlineKeyboardBuilder()
+    kb.row(
+        InlineKeyboardButton(text="🌤 Weather", callback_data="weather"),
+        InlineKeyboardButton(text="⁉️ About me", callback_data="about"),
+        InlineKeyboardButton(text="📆 Schedule", callback_data="schedule"),
     )
-    bot.send_message(cid, "That's what I can do for you.", reply_markup=kb)
+    await m.answer("That's what I can do for you.", reply_markup=kb.as_markup())
 
+@dp.message(Command(commands=["group"]))
+async def command_help(m: types.Message):
+    await m.answer("Напиши из какой ты группы")
 
-@bot.callback_query_handler(func=lambda c: c.data in ("weather", "about", "schedule"))
-def callbacks(call):
+@dp.callback_query(lambda c: c.data in ("weather", "about", "schedule"))
+async def callbacks(call: types.CallbackQuery):
     print(
         f"{call.from_user.first_name} {call.from_user.last_name or ''}"
         f"[{call.from_user.id}]: INLINE -> {call.data}"
     )
+    await call.answer()
     cid = call.message.chat.id
-    bot.answer_callback_query(call.id)
+
     if call.data == "weather":
         w = get_today_weather(55.0344, 82.9434)
-        bot.send_message(cid, format_weather(w), parse_mode="HTML")
+        await call.message.answer(format_weather(w))
     elif call.data == "about":
-        bot.send_message(cid, about_me())
+        await call.message.answer(about_me())
     elif call.data == "schedule":
-        html = get_schedule_html()
-        if not html:
-            bot.send_message(cid, "❌ Не удалось получить расписание")
-            return
-        schedule = parse_schedule(html)
-        text = format_schedule(schedule)
-        bot.send_message(cid, text, parse_mode="HTML")
+        if cid in group_id:
+            gid = group_id[cid]
+            html = get_schedule_html(str(gid))
+            if not html:
+                await call.message.answer("❌ Не удалось получить расписание")
+                return
+            schedule = parse_schedule(html)
+            text = format_schedule(schedule)
+            await call.message.answer(text)
+        else:
+            await call.message.answer("Напиши из какой ты группы")
 
 
-@bot.message_handler(content_types=["text"])
-def command_default(m):
+@dp.callback_query(lambda c: c.data.startswith("group:"))
+async def handle_group(call: types.CallbackQuery):
+    gid = call.data.split(":")[1]
+    cid = call.message.chat.id
+    await call.answer()
+
+    group_id[cid] = gid
+    save_users()
+
+    html = get_schedule_html(gid)
+    if not html:
+        await call.message.answer("❌ Не удалось получить расписание")
+        return
+
+    schedule = parse_schedule(html)
+    text = format_schedule(schedule)
+    await call.message.answer(text)
+
+
+@dp.message()
+async def command_default(m: types.Message):
     cid = m.chat.id
-    bot.send_message(
-        cid,
-        "I don't understand \"" + m.text + '"\nMaybe try the help page at /help',
-    )
+    text: str = re.sub(r"\s*-\s*", "", m.text)
+    groups = get_group_id(text)
+    groups = groups + get_group_id(m.text)
+
+    seen_ids = set()
+    groups = [g for g in groups if g["id"] not in seen_ids and not seen_ids.add(g["id"])]
+
+    if groups is not None:
+        await m.answer("Выбери группу:", reply_markup=groups_keyboard(groups))
+    else:
+        await m.answer(
+            f"I don't understand \"{m.text}\"\nMaybe try the help page at /help"
+        )
 
 
-bot.infinity_polling(skip_pending=True, timeout=20)
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(dp.start_polling(bot))

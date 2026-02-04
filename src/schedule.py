@@ -7,7 +7,8 @@ from config import LOGIN, PASSWORD
 
 LOGIN_URL = "https://sibsutis.ru/auth/?login=yes"
 PERSONAL_URL = "https://sibsutis.ru/company/personal/"
-SCHEDULE_URL = "https://sibsutis.ru/students/schedule/?type=student&group=133"
+SCHEDULE_URL = "https://sibsutis.ru/students/schedule/?type=student&group="
+GROUP_ID  = "https://sibsutis.ru/ajax/get_groups_soap.php"
 
 session = requests.Session()
 session.headers.update(
@@ -48,10 +49,10 @@ def ensure_login():
     return True
 
 
-def get_schedule_html():
+def get_schedule_html(group_id: str):
     if not ensure_login():
         return None
-    return session.get(SCHEDULE_URL).text
+    return session.get(str(SCHEDULE_URL + group_id)).text
 
 
 def parse_schedule(html: str) -> dict:
@@ -79,6 +80,9 @@ def parse_schedule(html: str) -> dict:
 
     return schedule
 
+def get_group_id(group_name: str) -> dict:
+    r = session.get(GROUP_ID, params={"search_group": group_name})
+    return r.json().get("results")
 
 def format_schedule(schedule: dict) -> str:
     """
@@ -147,9 +151,9 @@ def format_schedule(schedule: dict) -> str:
                 classroom = sub.get("CLASSROOM", "")
 
                 type_short = {
-                    "Лекционные занятия": "Лек",
-                    "Практические занятия": "Пр",
-                    "Лабораторные занятия": "Лаб",
+                    "Лекционные занятия": "Лекция",
+                    "Практические занятия": "Практика",
+                    "Лабораторные занятия": "Лабораторная",
                 }.get(lesson_type, lesson_type[:3])
 
                 pair_text = f"\n<b>{time_start}-{time_end}</b> | {type_short}\n"
