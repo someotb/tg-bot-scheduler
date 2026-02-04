@@ -1,5 +1,6 @@
 import json
 import re
+from typing import Any
 
 import requests
 
@@ -8,7 +9,7 @@ from config import LOGIN, PASSWORD
 LOGIN_URL = "https://sibsutis.ru/auth/?login=yes"
 PERSONAL_URL = "https://sibsutis.ru/company/personal/"
 SCHEDULE_URL = "https://sibsutis.ru/students/schedule/?type=student&group="
-GROUP_ID  = "https://sibsutis.ru/ajax/get_groups_soap.php"
+GROUP_ID = "https://sibsutis.ru/ajax/get_groups_soap.php"
 
 session = requests.Session()
 session.headers.update(
@@ -16,6 +17,10 @@ session.headers.update(
         "User-Agent": "Mozilla/5.0",
     }
 )
+
+
+def normalize_group_name(name: str) -> str:
+    return re.sub(r"[\s\-]", "", name).lower()
 
 
 def is_logged_in():
@@ -80,9 +85,11 @@ def parse_schedule(html: str) -> dict:
 
     return schedule
 
-def get_group_id(group_name: str) -> dict:
+
+def get_group_id(group_name: str) -> list[dict[str, Any]]:
     r = session.get(GROUP_ID, params={"search_group": group_name})
     return r.json().get("results")
+
 
 def format_schedule(schedule: dict) -> str:
     """

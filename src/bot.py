@@ -1,16 +1,24 @@
 import json
-import os, re
-from datetime import datetime
+import os
+import re
+
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.client.bot import DefaultBotProperties
+from aiogram.types import InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import config
-from schedule import format_schedule, get_schedule_html, parse_schedule, get_group_id
+from schedule import (
+    format_schedule,
+    get_group_id,
+    get_schedule_html,
+    normalize_group_name,
+    parse_schedule,
+)
 from weather import format_weather, get_today_weather
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -73,10 +81,7 @@ def groups_keyboard(groups: list):
     return kb.as_markup()
 
 
-bot = Bot(
-    token=config.BOT_TOKEN,
-    default=DefaultBotProperties(parse_mode="HTML")
-)
+bot = Bot(token=config.BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher(storage=MemoryStorage())
 
 knownUsers, userStep, group_id = load_users()
@@ -86,7 +91,7 @@ print("------------------Bot Started------------------")
 @dp.message(Command(commands=["start"]))
 async def command_start(m: types.Message):
     cid = m.chat.id
-    name = m.chat.first_name + " " + (m.chat.last_name or "")
+    name = (m.chat.first_name or "") + " " + (m.chat.last_name or "")
     if cid not in knownUsers:
         knownUsers.append(cid)
         userStep[cid] = 0
@@ -111,12 +116,66 @@ async def command_help(m: types.Message):
     )
     await m.answer("That's what I can do for you.", reply_markup=kb.as_markup())
 
+
+class GroupForm(StatesGroup):
+    waiting_for_group = State()
+
+
 @dp.message(Command(commands=["group"]))
-async def command_help(m: types.Message):
+async def change_group_command(m: types.Message, state: FSMContext):
     await m.answer("Напиши из какой ты группы")
+    await state.set_state(GroupForm.waiting_for_group)
+
+
+@dp.message(GroupForm.waiting_for_group)
+async def process_group(m: types.Message, state: FSMContext):
+    if not m.text:
+        return
+
+    text_clean = normalize_group_name(m.text)
+    groups = get_group_id(text_clean)
+    groups += get_group_id(m.text)
+
+    seen_ids = set()
+    groups = [
+        g for g in groups if g["id"] not in seen_ids and not seen_ids.add(g["id"])
+    ]
+
+    if groups:
+        await m.answer("Выбери группу:", reply_markup=groups_keyboard(groups))
+    else:
+        await m.answer("Группу не нашли. Попробуй ещё раз /group")
+
+    await state.clear()
+
+
+@dp.callback_query(lambda c: c.data.startswith("group:"))
+async def handle_group(call: types.CallbackQuery):
+    if not call.data or not call.message:
+        return
+
+    gid = call.data.split(":")[1]
+    cid = call.message.chat.id
+    await call.answer()
+
+    group_id[cid] = gid
+    save_users()
+
+    html = get_schedule_html(gid)
+    if not html:
+        await call.message.answer("❌ Не удалось получить расписание")
+        return
+
+    schedule = parse_schedule(html)
+    text = format_schedule(schedule)
+    await call.message.answer(text)
+
 
 @dp.callback_query(lambda c: c.data in ("weather", "about", "schedule"))
-async def callbacks(call: types.CallbackQuery):
+async def callbacks(call: types.CallbackQuery, state: FSMContext):
+    if call.message is None:
+        return
+
     print(
         f"{call.from_user.first_name} {call.from_user.last_name or ''}"
         f"[{call.from_user.id}]: INLINE -> {call.data}"
@@ -141,43 +200,12 @@ async def callbacks(call: types.CallbackQuery):
             await call.message.answer(text)
         else:
             await call.message.answer("Напиши из какой ты группы")
-
-
-@dp.callback_query(lambda c: c.data.startswith("group:"))
-async def handle_group(call: types.CallbackQuery):
-    gid = call.data.split(":")[1]
-    cid = call.message.chat.id
-    await call.answer()
-
-    group_id[cid] = gid
-    save_users()
-
-    html = get_schedule_html(gid)
-    if not html:
-        await call.message.answer("❌ Не удалось получить расписание")
-        return
-
-    schedule = parse_schedule(html)
-    text = format_schedule(schedule)
-    await call.message.answer(text)
+            await state.set_state(GroupForm.waiting_for_group)
 
 
 @dp.message()
 async def command_default(m: types.Message):
-    cid = m.chat.id
-    text: str = re.sub(r"\s*-\s*", "", m.text)
-    groups = get_group_id(text)
-    groups = groups + get_group_id(m.text)
-
-    seen_ids = set()
-    groups = [g for g in groups if g["id"] not in seen_ids and not seen_ids.add(g["id"])]
-
-    if groups is not None:
-        await m.answer("Выбери группу:", reply_markup=groups_keyboard(groups))
-    else:
-        await m.answer(
-            f"I don't understand \"{m.text}\"\nMaybe try the help page at /help"
-        )
+    await m.answer(f'I don\'t understand "{m.text}"\nMaybe try the help page at /help')
 
 
 if __name__ == "__main__":
