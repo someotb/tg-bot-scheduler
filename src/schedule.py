@@ -1,5 +1,6 @@
 import json
 import re
+from datetime import datetime
 from typing import Any
 
 import requests
@@ -91,6 +92,18 @@ def get_group_id(group_name: str) -> list[dict[str, Any]]:
     return r.json().get("results")
 
 
+def is_even_week(date: datetime | None = None) -> bool:
+    if date is None:
+        date = datetime.now()
+    return date.isocalendar().week % 2 == 0
+
+
+def is_day_for_current_week(day_idx: int, is_even_week: bool) -> bool:
+    if not is_even_week:
+        return 8 <= day_idx <= 14
+    return 1 <= day_idx <= 7
+
+
 def format_schedule(schedule: dict) -> str:
     """
     Форматирует расписание для вывода в телеграм
@@ -98,19 +111,24 @@ def format_schedule(schedule: dict) -> str:
     if not schedule:
         return "📅 Расписание не найдено"
 
+    today = datetime.now()
+    weekday_num = today.isoweekday()
+    is_even_week = today.isocalendar().week % 2 == 0
     output = []
 
     weekdays = {
-        "Понедельник": "ПН",
-        "Вторник": "ВТ",
-        "Среда": "СР",
-        "Четверг": "ЧТ",
-        "Пятница": "ПТ",
-        "Суббота": "СБ",
-        "Воскресенье": "ВС",
+        "Понедельник": 1,
+        "Вторник": 2,
+        "Среда": 3,
+        "Четверг": 4,
+        "Пятница": 5,
+        "Суббота": 6,
+        "Воскресенье": 7,
     }
 
     for day_idx in sorted(schedule.keys()):
+        if not is_day_for_current_week(day_idx, is_even_week):
+            continue
         day_data = schedule[day_idx]
 
         lessons = []
@@ -130,48 +148,49 @@ def format_schedule(schedule: dict) -> str:
         weekday_full = first_lesson.get("WEEK_DAY", "День")
         weekday = weekdays.get(weekday_full, weekday_full)
 
-        output.append(f"\n<b>📆 {weekday_full} ({weekday})</b>")
-        output.append("─" * 30)
+        if weekday_num == weekday:
+            output.append(f"\n<i><b>📆 {weekday_full.upper()}</b></i>")
+            output.append("─" * 11)
 
-        for cell in day_data.get("ScheduleCell", []):
-            time_start = (
-                cell.get("DateBegin", "").split("T")[-1][:5]
-                if "T" in str(cell.get("DateBegin", ""))
-                else ""
-            )
-            time_end = (
-                cell.get("DateEnd", "").split("T")[-1][:5]
-                if "T" in str(cell.get("DateEnd", ""))
-                else ""
-            )
+            for cell in day_data.get("ScheduleCell", []):
+                time_start = (
+                    cell.get("DateBegin", "").split("T")[-1][:5]
+                    if "T" in str(cell.get("DateBegin", ""))
+                    else ""
+                )
+                time_end = (
+                    cell.get("DateEnd", "").split("T")[-1][:5]
+                    if "T" in str(cell.get("DateEnd", ""))
+                    else ""
+                )
 
-            if not cell.get("Subgroup"):
-                continue
-
-            for sub in cell["Subgroup"]:
-                if not sub.get("DISCIPLINE"):
+                if not cell.get("Subgroup"):
                     continue
 
-                discipline = sub.get("DISCIPLINE", "—")
-                lesson_type = sub.get("TYPE_LESSON", "")
-                teacher = sub.get("TEACHER", [""])[0] if sub.get("TEACHER") else ""
-                classroom = sub.get("CLASSROOM", "")
+                for sub in cell["Subgroup"]:
+                    if not sub.get("DISCIPLINE"):
+                        continue
 
-                type_short = {
-                    "Лекционные занятия": "Лекция",
-                    "Практические занятия": "Практика",
-                    "Лабораторные занятия": "Лабораторная",
-                }.get(lesson_type, lesson_type[:3])
+                    discipline = sub.get("DISCIPLINE", "—")
+                    lesson_type = sub.get("TYPE_LESSON", "")
+                    teacher = sub.get("TEACHER", [""])[0] if sub.get("TEACHER") else ""
+                    classroom = sub.get("CLASSROOM", "")
 
-                pair_text = f"\n<b>{time_start}-{time_end}</b> | {type_short}\n"
-                pair_text += f"📚 {discipline}\n"
+                    type_short = {
+                        "Лекционные занятия": "Лекция",
+                        "Практические занятия": "Практика",
+                        "Лабораторные занятия": "Лабораторная",
+                    }.get(lesson_type, lesson_type[:3])
 
-                if teacher:
-                    pair_text += f"👨‍🏫 {teacher}\n"
-                if classroom:
-                    pair_text += f"🚪 {classroom}"
+                    pair_text = f"\n🕘  |  <b>{time_start}-{time_end} | {type_short}</b>\n".upper()
+                    pair_text += f"📚  |  {discipline}\n"
 
-                output.append(pair_text)
+                    if teacher:
+                        pair_text += f"😎  |  {teacher}\n"
+                    if classroom:
+                        pair_text += f"🚪  |  {classroom}"
+
+                    output.append(pair_text)
 
     if not output:
         return "📅 Расписание пустое"
