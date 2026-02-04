@@ -1,6 +1,5 @@
 import json
 import os
-import re
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
