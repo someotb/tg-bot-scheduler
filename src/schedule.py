@@ -149,8 +149,7 @@ def format_schedule(schedule: dict) -> str:
         weekday = weekdays.get(weekday_full, weekday_full)
 
         if weekday_num == weekday:
-            output.append(f"\n<i><b>📆 {weekday_full.upper()}</b></i>")
-            output.append("─" * 11)
+            output.append(f"\n<i><b><u>{weekday_full.upper()}</u></b></i>")
 
             for cell in day_data.get("ScheduleCell", []):
                 time_start = (
@@ -174,6 +173,13 @@ def format_schedule(schedule: dict) -> str:
                     discipline = sub.get("DISCIPLINE", "—")
                     lesson_type = sub.get("TYPE_LESSON", "")
                     teacher = sub.get("TEACHER", [""])[0] if sub.get("TEACHER") else ""
+                    teacher = teacher.split()
+                    res_teacher = teacher[0] + "."
+                    if teacher[-3]:
+                        res_teacher += teacher[-2][0].upper() + "."
+                        res_teacher += teacher[-3][0].upper() + "."
+                    elif teacher[-2]:
+                        res_teacher += teacher[-2][0].upper() + "."
                     classroom = sub.get("CLASSROOM", "")
 
                     type_short = {
@@ -182,13 +188,13 @@ def format_schedule(schedule: dict) -> str:
                         "Лабораторные занятия": "Лабораторная",
                     }.get(lesson_type, lesson_type[:3])
 
-                    pair_text = f"\n🕘  |  <b>{time_start}-{time_end} | {type_short}</b>\n".upper()
-                    pair_text += f"📚  |  {discipline}\n"
-
-                    if teacher:
-                        pair_text += f"😎  |  {teacher}\n"
-                    if classroom:
-                        pair_text += f"🚪  |  {classroom}"
+                    pair_text = f"\n<u>{time_start}-{time_end} | {type_short}</u>\n"
+                    pair_text += f"<b>{discipline}</b>\n"  # Дисциплина жирным
+                    if teacher or classroom:
+                        pair_text += f"{res_teacher}"
+                        if teacher and classroom:
+                            pair_text += " | "
+                        pair_text += f"<code>{classroom}</code>"
 
                     output.append(pair_text)
 
