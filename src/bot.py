@@ -1,4 +1,3 @@
-import json
 import os
 
 from aiogram import Bot, Dispatcher, types
