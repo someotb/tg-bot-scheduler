@@ -99,10 +99,16 @@ async def change_group_command(m: types.Message, state: FSMContext):
 async def process_group(m: types.Message, state: FSMContext):
     if not m.text:
         return
-
+    
     text_clean = normalize_group_name(m.text)
+    if not valid(text_clean):
+        await m.answer(
+        "Некорректное название группы.\n"
+        "Разрешены только русские буквы и цифры».\n"
+        "Пример: АА000")
+        return
     groups = get_group_id(text_clean)
-    groups += get_group_id(m.text)
+    groups += get_group_id(group_name_with_hyphen(text_clean))
 
     seen_ids = set()
     groups = [

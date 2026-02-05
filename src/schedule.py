@@ -23,6 +23,9 @@ session.headers.update(
 def normalize_group_name(name: str) -> str:
     return re.sub(r"[\s\-]", "", name).lower()
 
+def group_name_with_hyphen(s: str) -> str:
+    s = s.strip().upper()
+    return re.sub(r"([А-ЯЁ]+)(\d+)", r"\1-\2", s)
 
 def is_logged_in():
     r = session.get(PERSONAL_URL)
@@ -88,9 +91,16 @@ def parse_schedule(html: str) -> dict:
 
 
 def get_group_id(group_name: str) -> list[dict[str, Any]]:
-    r = session.get(GROUP_ID, params={"search_group": group_name})
-    return r.json().get("results")
+    try:
+        r = session.get(GROUP_ID, params={"search_group": group_name})
+        json = r.json()
+        dicts = json.get("results")
+    except requests.exceptions.JSONDecodeError:
+        return []
+    return dicts
 
+def valid(s: str) -> bool:
+    return bool(re.fullmatch(r"[А-Яа-яЁё0-9\-]+", s))
 
 def is_even_week(date: datetime | None = None) -> bool:
     if date is None:
