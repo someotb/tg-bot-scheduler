@@ -11,6 +11,7 @@ from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import config
+import database
 from schedule import (
     format_schedule,
     get_group_id,
@@ -21,11 +22,6 @@ from schedule import (
 from weather import format_weather, get_today_weather
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-USER_FILE = os.path.join(BASE_DIR, "../data/users.json")
-
-knownUsers = []
-userStep = {}
-group_id = {}
 
 
 def about_me():
@@ -34,30 +30,6 @@ def about_me():
         "he hopes that I will become a good helper for him in everyday life, "
         "do you think I will justify his trustworthiness?"
     )
-
-
-def load_users():
-    if not os.path.exists(USER_FILE):
-        return [], {}, {}
-    with open(USER_FILE, "r", encoding="utf-8") as f:
-        try:
-            data = json.load(f)
-        except json.JSONDecodeError:
-            return [], {}, {}
-    return (
-        data.get("known_users", []),
-        {int(k): v for k, v in data.get("user_step", {}).items()},
-        data.get("group_id", {}),
-    )
-
-
-def save_users():
-    with open(USER_FILE, "w", encoding="utf-8") as f:
-        json.dump(
-            {"known_users": knownUsers, "user_step": userStep, "group_id": group_id},
-            f,
-            indent=2,
-        )
 
 
 def groups_keyboard(groups: list):
@@ -80,10 +52,10 @@ def groups_keyboard(groups: list):
     return kb.as_markup()
 
 
+database.init_db()
 bot = Bot(token=config.BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher(storage=MemoryStorage())
 
-knownUsers, userStep, group_id = load_users()
 print("------------------Bot Started------------------")
 
 
@@ -91,10 +63,8 @@ print("------------------Bot Started------------------")
 async def command_start(m: types.Message):
     cid = m.chat.id
     name = (m.chat.first_name or "") + " " + (m.chat.last_name or "")
-    if cid not in knownUsers:
-        knownUsers.append(cid)
-        userStep[cid] = 0
-        save_users()
+    if not database.user_exists(cid):
+        database.add_user(cid)
         await m.answer("I'm glad to see you. stranger, i must scan you firstly...")
         await m.answer(
             f"The scan is completed!\nI am your humble servant, you can call me nado.\nNice to meet you {name}"
@@ -157,8 +127,7 @@ async def handle_group(call: types.CallbackQuery):
     cid = call.message.chat.id
     await call.answer()
 
-    group_id[cid] = gid
-    save_users()
+    database.set_group(cid, gid)
 
     html = get_schedule_html(gid)
     if not html:
@@ -188,8 +157,9 @@ async def callbacks(call: types.CallbackQuery, state: FSMContext):
     elif call.data == "about":
         await call.message.answer(about_me())
     elif call.data == "schedule":
-        if cid in group_id:
-            gid = group_id[cid]
+        database.add_user(cid)
+        gid = database.get_group(cid)
+        if gid:
             html = get_schedule_html(str(gid))
             if not html:
                 await call.message.answer("❌ Не удалось получить расписание")
