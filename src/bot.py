@@ -11,13 +11,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import config
 import database
-from schedule import (
-    format_schedule,
-    get_group_id,
-    get_schedule_html,
-    normalize_group_name,
-    parse_schedule,
-)
+from schedule import *
 from weather import format_weather, get_today_weather
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -34,20 +28,14 @@ def about_me():
 def groups_keyboard(groups: list):
     groups_sorted = sorted(groups, key=lambda g: g.get("text", ""))
     kb = InlineKeyboardBuilder()
-    row_len = 2 if len(groups) < 12 else 3
-    row = []
-    for i, group in enumerate(groups_sorted, 1):
+    row_len = 2 if len(groups) < 12 else 4
+    for group in groups_sorted:
         gid = str(group.get("id", ""))
         name = str(group.get("text", ""))
         if not gid or not name:
             continue
-        row.append(InlineKeyboardButton(text=name, callback_data=f"group:{gid}"))
-        if i % row_len == 0:
-            kb.row(*row)
-            row = []
-    if row:
-        kb.row(*row)
-    kb.adjust(2)
+        kb.add(InlineKeyboardButton(text=name, callback_data=f"group:{gid}"))
+    kb.adjust(row_len)
     return kb.as_markup()
 
 
