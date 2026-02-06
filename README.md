@@ -16,3 +16,11 @@ Also you should create `config.py` and put YOUR Telegram TOKEN inside through th
 ```
 clear; python bot.py
 ```
+
+## Docker
+
+```
+sudo docker run -d --name tg-bot-scheduler -v `PATH`/tg-bot-scheduler/data:/app/data tg-bot-scheduler
+```
+
+Чтобы не монтировать базу данных
