@@ -71,7 +71,7 @@ async def log_message(message: Message | None):
 class LoggingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: TelegramObject, data):
         if isinstance(event, Message):
-            await log_message(event)
+            log_message(event)
 
         elif isinstance(event, CallbackQuery):
             user = event.from_user
