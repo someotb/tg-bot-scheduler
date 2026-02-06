@@ -11,7 +11,15 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import config
 import database
-from schedule import *
+from schedule import (
+    format_schedule,
+    get_group_id,
+    get_schedule_html,
+    group_name_with_hyphen,
+    normalize_group_name,
+    parse_schedule,
+    valid,
+)
 from weather import format_weather, get_today_weather
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -87,13 +95,14 @@ async def change_group_command(m: types.Message, state: FSMContext):
 async def process_group(m: types.Message, state: FSMContext):
     if not m.text:
         return
-    
+
     text_clean = normalize_group_name(m.text)
     if not valid(text_clean):
         await m.answer(
-        "Некорректное название группы.\n"
-        "Разрешены только русские буквы и цифры».\n"
-        "Пример: АА000")
+            "Некорректное название группы.\n"
+            "Разрешены только русские буквы и цифры».\n"
+            "Пример: АА000"
+        )
         return
     groups = get_group_id(text_clean)
     groups += get_group_id(group_name_with_hyphen(text_clean))

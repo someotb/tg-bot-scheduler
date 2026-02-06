@@ -23,9 +23,11 @@ session.headers.update(
 def normalize_group_name(name: str) -> str:
     return re.sub(r"[\s\-]", "", name).lower()
 
+
 def group_name_with_hyphen(s: str) -> str:
     s = s.strip().upper()
     return re.sub(r"([А-ЯЁ]+)(\d+)", r"\1-\2", s)
+
 
 def is_logged_in():
     r = session.get(PERSONAL_URL)
@@ -99,8 +101,10 @@ def get_group_id(group_name: str) -> list[dict[str, Any]]:
         return []
     return dicts
 
+
 def valid(s: str) -> bool:
     return bool(re.fullmatch(r"[А-Яа-яЁё0-9\-]+", s))
+
 
 def is_even_week(date: datetime | None = None) -> bool:
     if date is None:
@@ -199,7 +203,7 @@ def format_schedule(schedule: dict) -> str:
                     }.get(lesson_type, lesson_type[:3])
 
                     pair_text = f"\n<u>{time_start}-{time_end} | {type_short}</u>\n"
-                    pair_text += f"<b>{discipline}</b>\n"  # Дисциплина жирным
+                    pair_text += f"<b>{discipline}</b>\n"
                     if teacher or classroom:
                         pair_text += f"{res_teacher}"
                         if teacher and classroom:
