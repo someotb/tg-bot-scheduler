@@ -27,12 +27,6 @@ from weather import format_weather, get_today_weather
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(os.path.dirname(__file__), "../data/messages.log")
 
-print(f"BASE_DIR: {BASE_DIR}")
-print(f"LOG_FILE (relative): {LOG_FILE}")
-print(f"LOG_FILE (absolute): {os.path.abspath(LOG_FILE)}")
-print(f"Log directory exists: {os.path.exists(os.path.dirname(LOG_FILE))}")
-print(f"Log file exists: {os.path.exists(LOG_FILE)}")
-
 def about_me():
     return (
         "I am a bot for experiments, my creator will use me for his own purposes, "
