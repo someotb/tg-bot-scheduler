@@ -10,4 +10,4 @@ COPY src/ ./src
 
 WORKDIR /app/src
 
-CMD ["python3", "bot.py"]
+CMD ["python3", "-u", "bot.py"]
