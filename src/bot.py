@@ -1,4 +1,6 @@
+import json
 import os
+from datetime import datetime
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
@@ -6,7 +8,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import config
@@ -23,6 +25,7 @@ from schedule import (
 from weather import format_weather, get_today_weather
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_FILE = os.path.join(os.path.dirname(__file__), "../data/messages.log")
 
 
 def about_me():
@@ -50,8 +53,25 @@ def groups_keyboard(groups: list):
 database.init_db()
 bot = Bot(token=config.BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher(storage=MemoryStorage())
+print("Bot Started...")
 
-print("------------------Bot Started------------------")
+
+async def log_message(message: Message | None):
+    if message is None:
+        return
+
+    user = message.from_user
+    entry = {
+        "time": datetime.now().isoformat(),
+        "user_id": getattr(user, "id", None),
+        "username": getattr(user, "username", None),
+        "first_name": getattr(user, "first_name", None),
+        "last_name": getattr(user, "last_name", None),
+        "text": message.text,
+    }
+
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
 @dp.message(Command(commands=["start"]))
@@ -145,11 +165,6 @@ async def handle_group(call: types.CallbackQuery):
 async def callbacks(call: types.CallbackQuery, state: FSMContext):
     if call.message is None:
         return
-
-    print(
-        f"{call.from_user.first_name} {call.from_user.last_name or ''}"
-        f"[{call.from_user.id}]: INLINE -> {call.data}"
-    )
     await call.answer()
     cid = call.message.chat.id
 
@@ -176,6 +191,7 @@ async def callbacks(call: types.CallbackQuery, state: FSMContext):
 
 @dp.message()
 async def command_default(m: types.Message):
+    await log_message(m)
     await m.answer(f'I don\'t understand "{m.text}"\nMaybe try the help page at /help')
 
 
