@@ -57,8 +57,7 @@ def groups_keyboard(groups: list):
 
 async def log_message(message: Message | None):
     if message is None:
-        print("Message is None")
-
+        return
     user = message.from_user
     entry = {
         "time": datetime.now().isoformat(),
@@ -69,6 +68,7 @@ async def log_message(message: Message | None):
         "text": message.text,
     }
 
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
@@ -77,7 +77,7 @@ class LoggingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: TelegramObject, data):
         try:
             if isinstance(event, Message):
-                log_message(event)
+                await log_message(event)
 
             elif isinstance(event, CallbackQuery):
                 user = event.from_user
