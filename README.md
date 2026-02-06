@@ -4,7 +4,7 @@ This project is aim to create tg bot that will make real my wishes. I want try a
 ## How to start
 I recommend create a python `venv` and install needed packages into your `venv`
 
-Create directory `data` and file inside `users.json` which will store all users
+Create directory `data`
 ```
 mkdir data; cd data; touch users.json
 ```
