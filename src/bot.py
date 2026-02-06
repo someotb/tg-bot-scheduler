@@ -2,13 +2,13 @@ import json
 import os
 from datetime import datetime
 
-from aiogram import Bot, Dispatcher, types
+from aiogram import BaseMiddleware, Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import InlineKeyboardButton, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, Message, TelegramObject
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import config
@@ -50,12 +50,6 @@ def groups_keyboard(groups: list):
     return kb.as_markup()
 
 
-database.init_db()
-bot = Bot(token=config.BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
-dp = Dispatcher(storage=MemoryStorage())
-print("Bot Started...")
-
-
 async def log_message(message: Message | None):
     if message is None:
         return
@@ -72,6 +66,35 @@ async def log_message(message: Message | None):
 
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+class LoggingMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event: TelegramObject, data):
+        if isinstance(event, Message):
+            await log_message(event)
+
+        elif isinstance(event, CallbackQuery):
+            user = event.from_user
+            entry = {
+                "time": datetime.now().isoformat(),
+                "user_id": getattr(user, "id", None),
+                "username": getattr(user, "username", None),
+                "first_name": getattr(user, "first_name", None),
+                "last_name": getattr(user, "last_name", None),
+                "callback_data": event.data,
+            }
+
+            with open(LOG_FILE, "a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+        return await handler(event, data)
+
+
+database.init_db()
+bot = Bot(token=config.BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
+dp = Dispatcher(storage=MemoryStorage())
+dp.update.middleware(LoggingMiddleware())
+print("Bot Started...")
 
 
 @dp.message(Command(commands=["start"]))
@@ -191,8 +214,6 @@ async def callbacks(call: types.CallbackQuery, state: FSMContext):
 
 @dp.message()
 async def command_default(m: types.Message):
-    print(m.text)
-    await log_message(m)
     await m.answer(f'I don\'t understand "{m.text}"\nMaybe try the help page at /help')
 
 
