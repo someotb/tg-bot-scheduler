@@ -27,6 +27,11 @@ from weather import format_weather, get_today_weather
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(os.path.dirname(__file__), "../data/messages.log")
 
+print(f"BASE_DIR: {BASE_DIR}")
+print(f"LOG_FILE (relative): {LOG_FILE}")
+print(f"LOG_FILE (absolute): {os.path.abspath(LOG_FILE)}")
+print(f"Log directory exists: {os.path.exists(os.path.dirname(LOG_FILE))}")
+print(f"Log file exists: {os.path.exists(LOG_FILE)}")
 
 def about_me():
     return (
@@ -70,22 +75,25 @@ async def log_message(message: Message | None):
 
 class LoggingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: TelegramObject, data):
-        if isinstance(event, Message):
-            log_message(event)
+        try:
+            if isinstance(event, Message):
+                log_message(event)
 
-        elif isinstance(event, CallbackQuery):
-            user = event.from_user
-            entry = {
-                "time": datetime.now().isoformat(),
-                "user_id": getattr(user, "id", None),
-                "username": getattr(user, "username", None),
-                "first_name": getattr(user, "first_name", None),
-                "last_name": getattr(user, "last_name", None),
-                "callback_data": event.data,
-            }
-
-            with open(LOG_FILE, "a", encoding="utf-8") as f:
-                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+            elif isinstance(event, CallbackQuery):
+                user = event.from_user
+                entry = {
+                    "time": datetime.now().isoformat(),
+                    "user_id": getattr(user, "id", None),
+                    "username": getattr(user, "username", None),
+                    "first_name": getattr(user, "first_name", None),
+                    "last_name": getattr(user, "last_name", None),
+                    "callback_data": event.data,
+                }
+                os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+                with open(LOG_FILE, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        except Exception as e:
+            print(f"LoggingMiddleware error: {e}")
 
         return await handler(event, data)
 
