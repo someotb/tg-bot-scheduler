@@ -191,6 +191,7 @@ async def callbacks(call: types.CallbackQuery, state: FSMContext):
 
 @dp.message()
 async def command_default(m: types.Message):
+    print(m.text)
     await log_message(m)
     await m.answer(f'I don\'t understand "{m.text}"\nMaybe try the help page at /help')
 
