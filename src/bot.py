@@ -101,7 +101,8 @@ class LoggingMiddleware(BaseMiddleware):
 database.init_db()
 bot = Bot(token=config.BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher(storage=MemoryStorage())
-dp.update.middleware(LoggingMiddleware())
+dp.message.middleware(LoggingMiddleware())
+dp.callback_query.middleware(LoggingMiddleware())
 print("Bot Started...")
 
 
