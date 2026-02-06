@@ -57,7 +57,7 @@ def groups_keyboard(groups: list):
 
 async def log_message(message: Message | None):
     if message is None:
-        return
+        print("Message is None")
 
     user = message.from_user
     entry = {
