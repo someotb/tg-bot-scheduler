@@ -106,13 +106,13 @@ async def command_start(m: types.Message):
     name = (m.chat.first_name or "") + " " + (m.chat.last_name or "")
     if not database.user_exists(cid):
         database.add_user(cid)
-        await m.answer("I'm glad to see you. stranger, i must scan you firstly...")
+        await m.answer("Привет, я бот `nado`, надо узнать друг друга поближе, давай просканирую тебя...")
         await m.answer(
-            f"The scan is completed!\nI am your humble servant, you can call me nado.\nNice to meet you {name}"
+            f"Сканирование завершено, рад знакомству {name}!"
         )
         await command_help(m)
     else:
-        await m.answer(f"Hi, {name}!")
+        await m.answer(f"Привет, {name}!")
         await command_help(m)
 
 
@@ -124,7 +124,7 @@ async def command_help(m: types.Message):
         InlineKeyboardButton(text="⁉️ About me", callback_data="about"),
         InlineKeyboardButton(text="📆 Schedule", callback_data="schedule"),
     )
-    await m.answer("That's what I can do for you.", reply_markup=kb.as_markup())
+    await m.answer("Что я могу сделать", reply_markup=kb.as_markup())
 
 
 class GroupForm(StatesGroup):
@@ -179,7 +179,7 @@ async def handle_group(call: types.CallbackQuery):
 
     html = get_schedule_html(gid)
     if not html:
-        await call.message.answer("❌ Не удалось получить расписание")
+        await call.message.answer("Не удалось получить расписание")
         return
 
     schedule = parse_schedule(html)
@@ -205,7 +205,7 @@ async def callbacks(call: types.CallbackQuery, state: FSMContext):
         if gid:
             html = get_schedule_html(str(gid))
             if not html:
-                await call.message.answer("❌ Не удалось получить расписание")
+                await call.message.answer("Не удалось получить расписание")
                 return
             schedule = parse_schedule(html)
             text = format_schedule(schedule)
@@ -217,7 +217,7 @@ async def callbacks(call: types.CallbackQuery, state: FSMContext):
 
 @dp.message()
 async def command_default(m: types.Message):
-    await m.answer(f'I don\'t understand "{m.text}"\nMaybe try the help page at /help')
+    await m.answer(f'Я не понимаю "{m.text}"\nПопробуйте команду /help')
 
 
 if __name__ == "__main__":
