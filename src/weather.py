@@ -70,7 +70,7 @@ def format_weather(w: dict) -> str:
     desc = WEATHER_CODES.get(w["code"], "Неизвестно")
     now_time = datetime.now().strftime("%H:%M:%S, %d %B")
 
-    weather_text = f"\n<u>Температура сейчас:</u> {w['current_temp']}°C\n"
+    weather_text = f"\n<b>Температура сейчас:</b> {w['current_temp']}°C\n"
     weather_text += f"<b>Температура сегодня:</b> от {w['t_min']}°C до {w['t_max']}°C\n"
     weather_text += f"<b>Ветер:</b> {w['current_wind']} m/s\n"
     weather_text += f"<b>Состояние:</b> {desc}\n"
