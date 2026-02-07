@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   tg-bot-scheduler:
     build: .
-    container_name: scheduler
+    container_name: tg-bot-scheduler
     volumes:
       - ./data:/app/data
     environment:
