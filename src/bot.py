@@ -29,9 +29,9 @@ LOG_FILE = os.path.join(os.path.dirname(__file__), "../data/messages.log")
 
 def about_me():
     return (
-        "I am a bot for experiments, my creator will use me for his own purposes, "
-        "he hopes that I will become a good helper for him in everyday life, "
-        "do you think I will justify his trustworthiness?"
+        "Я - бот для экспериментов, мой создатель будет использовать меня в своих целях",
+        "он надеется, что я стану для него хорошим помощником в повседневной жизни",
+        "как вы думаете, я оправдаю его доверие?"
     )
 
 
@@ -124,7 +124,7 @@ async def command_help(m: types.Message):
         InlineKeyboardButton(text="⁉️ About me", callback_data="about"),
         InlineKeyboardButton(text="📆 Schedule", callback_data="schedule"),
     )
-    await m.answer("Что я могу сделать", reply_markup=kb.as_markup())
+    await m.answer("Вот, что я могу для тебя сделать.", reply_markup=kb.as_markup())
 
 
 class GroupForm(StatesGroup):
