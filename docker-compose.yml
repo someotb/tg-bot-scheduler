@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  tg-bot-scheduler:
+    build: .
+    container_name: scheduler
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=Asia/Novosibirsk
+    restart: unless-stopped
+    working_dir: /app/src
+    command: ["python3", "-u", "bot.py"]

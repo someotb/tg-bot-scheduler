@@ -2,3 +2,6 @@ __pycache__
 venv
 config.py
 userdata.db
+.git
+*.pyc
+*.log
