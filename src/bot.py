@@ -29,8 +29,8 @@ LOG_FILE = os.path.join(os.path.dirname(__file__), "../data/messages.log")
 
 def about_me():
     return (
-        "Я - бот для экспериментов, мой создатель будет использовать меня в своих целях",
-        "он надеется, что я стану для него хорошим помощником в повседневной жизни",
+        "Я - бот для экспериментов, мой создатель будет использовать меня в своих целях, "
+        "он надеется, что я стану для него хорошим помощником в повседневной жизни, "
         "как вы думаете, я оправдаю его доверие?"
     )
 
@@ -120,9 +120,9 @@ async def command_start(m: types.Message):
 async def command_help(m: types.Message):
     kb = InlineKeyboardBuilder()
     kb.row(
-        InlineKeyboardButton(text="🌤 Weather", callback_data="weather"),
-        InlineKeyboardButton(text="⁉️ About me", callback_data="about"),
-        InlineKeyboardButton(text="📆 Schedule", callback_data="schedule"),
+        InlineKeyboardButton(text="🌤 Погода", callback_data="weather"),
+        InlineKeyboardButton(text="⁉️ Обо мне", callback_data="about"),
+        InlineKeyboardButton(text="📆 Расписание", callback_data="schedule"),
     )
     await m.answer("Вот, что я могу для тебя сделать.", reply_markup=kb.as_markup())
 
