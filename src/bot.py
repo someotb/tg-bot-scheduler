@@ -67,6 +67,26 @@ async def log_message(message: Message | None):
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
+class UserUpdateMiddleware(BaseMiddleware):
+    async def __call__(self, handler, event: TelegramObject, data):
+        user = None
+        if isinstance(event, Message):
+            user = event.from_user
+        elif isinstance(event, CallbackQuery):
+            user = event.from_user
+
+        if user:
+            cid = user.id
+            if not database.user_exists(cid):
+                database.add_user(cid)
+            
+            database.set_username(cid, user.username)
+            database.set_firstname(cid, user.first_name)
+            database.set_lastname(cid, user.last_name)
+
+        return await handler(event, data)
+
+
 class LoggingMiddleware(BaseMiddleware):
     async def __call__(self, handler, event: TelegramObject, data):
         try:
@@ -95,6 +115,8 @@ class LoggingMiddleware(BaseMiddleware):
 database.init_db()
 bot = Bot(token=config.BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher(storage=MemoryStorage())
+dp.message.middleware(UserUpdateMiddleware())
+dp.callback_query.middleware(UserUpdateMiddleware())
 dp.message.middleware(LoggingMiddleware())
 dp.callback_query.middleware(LoggingMiddleware())
 print("Bot Started...")
